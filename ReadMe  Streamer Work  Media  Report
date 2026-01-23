@@ -1,0 +1,35 @@
+ """
+1.Do users who receive promotions churn less?
+Answer :
+Using Received_Promotions vs is_churned. Customer with  no promotions have the highest churning effect with a probability of 11% , 
+This suggests that lack of promotions increases the likelihood of churn, at least compared to customers who did get promotions.
+
+2.  Does watch time impact churn likelihood?
+Answer : 
+Using T_test for nominal order like  is_churned and continuous measure like watch_time ,
+I was able to infer that customers who churned watch less with  -0.98 
+value which show a  33%  average active customers , and 24% of average customers that churned 
+with probability  0.3298 greater than 0.05 which show there is not enough evidence of 
+the difference
+
+3.  Are mobile dominant users more likely to cancel?
+Answer : 
+Churn rates across low, medium, and high mobile usage groups are very similar (22–24%), 
+suggesting that mobile usage dominance has little to no impact on churn.
+Even though it feels intuitive that mobile-heavy users might churn more,
+the data doesn’t support that.
+
+4. What are the top 3 features influencing churn based on your model?
+Received_Promotions
+referred_by_friend
+complaints_raised
+Taking up from complaints_raised  noticed customers who churn have low complaints raised due to fact that they watch less
+customer who are active have 1149 complaint and are been attended to due to active customers recieving promotion ,
+while churning customers doesn't . 
+
+
+To solve this : i would prescribe  receiving promotion should have effect on customer who referred a friend and the friend referred 
+
+Predictive Analysis : show weak model still  on process on feature that can predit strong model 
+
+"""
