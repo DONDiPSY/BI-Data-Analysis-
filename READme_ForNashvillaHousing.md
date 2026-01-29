@@ -3,4 +3,5 @@
   - Read the CSV File
   - Convert data type
   - Drops rows with missing columns  because missing columns are more than 50 %
-  - Filled up missing values because it in the range of 5%- 20% with a total of 18 rows 
+  - Filled up missing values because it in the range of 5%- 20% with a total of 18 rows
+  -  Create Feature Engineering for "property_age_sale" to know the actual span of property before it was bought 
