@@ -83,4 +83,3 @@ df.info()
 
 
 print(df.isnull().sum())
-
