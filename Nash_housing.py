@@ -1,20 +1,24 @@
 #import libraries
 import numpy as np
 import pandas as pd
-
+from sqlalchemy import create_engine
 # to read the csv file
 df = pd.read_csv("NashvilleHousing.csv")
 backup_df = df.copy()
 # information about the file
-#df.info()
+print(df.isnull().sum())
+print(df.loc[df["SalePrice"].notna(), "SalePrice"].sample(6))
+
+
+
 # convert column datatype
-def Convert(df, data_ID="ParcelID", data_date="SaleDate" ):
-    # 1. Handle the ID column (Numeric/String cleanup)
-    if data_ID in df.columns:
-        #Remove Space First
-        df[data_ID] = df[data_ID].astype(str).str.replace(r"\s+", "" , regex=True)
-        # Convert to numeric
-        df[data_ID] = pd.to_numeric(df[data_ID], errors='coerce')
+def Convert(df, SalePrice="SalePrice", data_date="SaleDate" ):
+    # 1. Handle the sales and Date column (Numeric/String cleanup)
+    if SalePrice in df.columns:
+        # Remove (,) first
+        df[SalePrice] = df[SalePrice].astype(str).replace(r"[^\d]", "", regex=True)
+        # Convert datatype int64
+        df[SalePrice] = pd.to_numeric(df[SalePrice], errors="coerce").astype("Int64")
 
     if data_date in df.columns:
         # convert to datetime
@@ -23,9 +27,25 @@ def Convert(df, data_ID="ParcelID", data_date="SaleDate" ):
 
     return  df
 
-
 Convert(df)
-print(df[["ParcelID", "SaleDate"]].head())
+print(df[["SalePrice", "SaleDate"]].head())
+
+
+def show_bad_values(df, col):
+    # Identify rows that are not numeric in SalePrice
+    mask = pd.to_numeric(df[col], errors="coerce").isna()
+    return df.loc[mask, col].value_counts(dropna=False)
+
+print(show_bad_values(backup_df, "SalePrice"))
+
+def process_data(df, Bed="Bedrooms", fullbath="FullBath", half="HalfBath", Totalvalue="TotalValue",BuildingValue="BuildingValue"):
+  for col in [Bed, fullbath, half,  Totalvalue,BuildingValue]:
+      df[col] = df[col].astype("Int64")
+  return  df
+
+process_data(df)
+
+
 
 
 
@@ -50,7 +70,7 @@ df["PropertyAddress"].fillna("109  BAILEY VIEW CT, GOODLETTSVILLE", inplace= Fal
 print(df.isnull().sum())
 
 
-df.info()
+#df.info()
 
 # Ensure YearBuilt is numeric and convert to integer
 df["YearBuilt"] = pd.to_numeric(df["YearBuilt"], errors="coerce").astype("Int64")
@@ -60,3 +80,7 @@ df["property_age_at_sale"] = df["SaleDate"].dt.year - df["YearBuilt"]
 print(df["property_age_at_sale"].head())
 
 df.info()
+
+
+print(df.isnull().sum())
+
