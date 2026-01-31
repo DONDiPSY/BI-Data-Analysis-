@@ -7,7 +7,7 @@
   -  Create Feature Engineering for "property_age_sale" to know the actual span of property before it was bought
 
 2. Normalize SalePrice strings, convert to Int64, and inspect rows failing numeric coercion :
-   - Notice some field Saleprice have currency sign which clean and can make data unreliable
+   - Notice some field Saleprice have currency sign without cleaning can make data unreliable
    - change data types columns like Bedroom,  FullBath , Halfbath from float to int
    - Remove ParcelID and Legal reference from  conversion because they're  identification for housing and not meant to be converted
      
