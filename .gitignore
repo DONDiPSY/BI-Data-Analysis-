@@ -1,0 +1,23 @@
+# created by virtualenv automatically
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
+env/
+pyvenv.cfg
+lib/
+include/
+etc/
+
+# Sensitive files
+.env
+
+# PyCharm
+.idea/
+
+# Optional
+scripts/
+share/
+
