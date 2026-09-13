@@ -6,11 +6,11 @@ __pycache__/
 # Virtual env
 venv/
 env/
-pyvenv.cfg
-lib/
-include/
-etc/
-
+/pyvenv.cfg/
+/lib/
+/include/
+/etc/
+/Scripts/
 # Sensitive files
 .env
 
@@ -18,6 +18,5 @@ etc/
 .idea/
 
 # Optional
-scripts/
 share/
 
