@@ -6,7 +6,7 @@ __pycache__/
 # Virtual env
 venv/
 env/
-/pyvenv.cfg/
+/pyvenv.cfg
 /lib/
 /include/
 /etc/

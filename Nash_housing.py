@@ -103,10 +103,12 @@ def Column_Space_data(df):
 
 Column_Space_data(df)
 
+
+
 # checking for duplicates
 print(df.duplicated().any())
 
-# Load enviroment varaible
+# Load enviroment variable
 load_dotenv()
 
 # Retrieve Key and encrypted password from .env
