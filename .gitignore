@@ -20,3 +20,7 @@ env/
 # Optional
 share/
 
+# files 
+payslim_data/payslim_raw_data/.csv
+payslim_data/staging_paysim/.parquet
+
