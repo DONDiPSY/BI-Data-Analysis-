@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 
-def extract_data(url, headers, raw_dir, max_pages=50, timeout=80, max_retries=3):
+def extract_data(url, headers, raw_dir, max_pages=10, timeout=80, max_retries=3):
     """
     Pull paginated results from the OpenAQ API and save them as a single
     raw JSON file.
@@ -19,7 +19,7 @@ def extract_data(url, headers, raw_dir, max_pages=50, timeout=80, max_retries=3)
     raw_dir : str or Path
         Directory the raw JSON file should be saved into.
     max_pages : int
-        Number of pages to fetch (default 20).
+        Number of pages to fetch (default 50).
     timeout : int
         Seconds to wait for a response before giving up on a single request.
     max_retries : int
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     # Base OpenAQ endpoint — page numbers get appended to this in extract_data()
     url = "https://api.openaq.org/v3/locations"
 
-    # Your OpenAQ API key (see note below about moving this out of the code)
+    # OpenAQ API key
     api_key = "2aa5f014dacd89de622df3de68d988b63da1464c682fbd8d2598b5b1ace91e95"
 
     # Headers sent with every request: the API key, and telling the server

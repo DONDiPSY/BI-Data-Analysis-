@@ -1,160 +1,87 @@
 import json
 import pandas as pd
+import numpy as np
 from pathlib import Path
 def process_openaq_data(raw_json_path, staging_path):
+
     """
-    Load a raw OpenAQ 'locations' JSON export, flatten the nested
-    sensors / instruments / licenses / bounds fields into separate
-    tables, clean up columns and datatypes, and write the cleaned
-    parent (locations) table to a Parquet file.
 
-
-    Parameters
-    ----------
-    raw_json_path : str or Path
-        Path to the raw OpenAQ JSON file (e.g. "Raw_OpenAQ_....json").
-    staging_dir : str or Path
-        Full output path (including filename) for the cleaned Parquet file.
-
-
-    Returns
-    -------
-    df : pd.DataFrame
-        Cleaned locations (parent) table.
-    sensor_df : pd.DataFrame
-        One row per sensor. Links back to df via 'location_id'.
-    df_instrument : pd.DataFrame
-        One row per instrument. Links back to df via 'instrument_id'.
-    license_df_data : pd.DataFrame
-        One row per license. Links back to df via 'location_id'.
+    :param raw_json_path:
+    :param staging_path:
+    :return:  df
+    Load file  into variable data
+    using dictionary comprehension to return a unique id
     """
+
     raw_json_path = Path(raw_json_path)
+    print(raw_json_path)
+    print(raw_json_path.is_dir())
     staging_path = Path(staging_path)
 
 
-    # 1. Load the JSON and turn the "results" list into a flat-ish DataFrame
-    with open(raw_json_path) as f:
+    # 1. Load the JSON and turn the data  list into a flat-ish DataFrame
+    with open(raw_json_path, encoding="utf-8") as f:
         data = json.load(f)
-    df = pd.json_normalize(data["results"])
 
-    # check if the 20 pages consist of actual columns  in page one
-    expected_columns = {
-        'id', 'name', 'locality', 'timezone', 'isMobile', 'isMonitor','distance', 'country.id',
-        'country.code', 'country.name', 'owner.id', 'owner.name', 'provider.id', 'provider.name',
-        'coordinates.latitude', 'coordinates.longitude', 'datetimeFirst.utc',
-        'datetimeFirst.local', 'datetimeLast.utc', 'datetimeLast.local','bounds', 'sensors',
-        'licenses', 'instruments', 'timezone'
-    }
-    actual_columns = set(df)
-    new_cols = actual_columns.difference(expected_columns)
-    missing_cols = expected_columns.difference(actual_columns)
-    if new_cols:
-        print(f"⚠️ New columns not in cleaning logic: {new_cols}")
-    if missing_cols:
-        print(f"⚠️ Expected columns missing from this pull: {missing_cols}")
+    # 1. Pages can Overlap --> Keep one record per location
+    # dictionary comprehension key: value for item in iterable
+    data = list({loc["id"]: loc for loc in data}.values())
+    # confused
+    # 2. sanity: bounds must be  the station point otherwise don't drop them
+    non_point = [i["id"] for i in data
+                 if not i.get("bounds")
+                 or not np.allclose(i["bounds"], [i["coordinates"]["longitude"],i["coordinates"]["latitude"]] * 2)]
+    if non_point:
+        print(f"⚠️ bounds differ from the point for locations: {non_point}")
 
+    # 3. child tables : loop over dict so the parent id rides along
+    sensors, instruments , licenses = [], [], []
+    for loc in data:
+        lid = loc["id"]
+        for s in loc.get("sensors") or [] :
+            p = s.get("parameter") or {}
+            sensors.append({"sensor_id":s["id"], "location_id":lid,
+                            "parameter_id": p.get("id"), "parameter_name": p.get("name"),
+                            "units" : p.get("units"), "display_name":p.get("displayName")
+                            })
+        for i in loc.get("instruments") or []:
+            instruments.append({"instrument_id":i["id"], "location_id":lid,
+                                "instrument_name": i["name"]})
+        for lic in loc.get("licenses") or []:
+            licenses.append({"location_id":lid, "license_id": lic["id"],
+                             "license_name": lic["name"],
+                             "date_from":lic.get("dateFrom"), "date_to":lic.get("dateTo")})
 
-    # 2. bounds is a 4-element list per row -> split it into 4 real columns
-    df[["min_lon", "min_lat", "max_lon", "max_lax"]] = pd.DataFrame(
-        df["bounds"].tolist(), index=df.index
-    )
-    df = df.drop(columns=["bounds"])
+     # drop parent tables
+    df = pd.json_normalize(data).drop(columns=["sensors", "instruments", "licenses", "bounds", "distance","datetimeFirst", "datetimeLast",
+                 "datetimeFirst.local", "datetimeLast.local"], errors="ignore")
+    # rename columns with "." to "_"
+    df = df.rename(columns={
+        "id": "location_id", "name": "location_name",
+        "country.id": "country_id", "country.code": "country_code", "country.name": "country_name",
+        "owner.id": "owner_id", "owner.name": "owner_name",
+        "provider.id": "provider_id", "provider.name": "provider_name",
+        "coordinates.latitude": "latitude", "coordinates.longitude": "longitude",
+        "datetimeFirst.utc": "first_measured_utc", "datetimeLast.utc": "last_measured_utc",
+        "isMobile": "is_mobile", "isMonitor": "is_monitor"})
+   # remove white space in fields
+    df["location_name"] = df["location_name"].str.strip()
+    loc = df["locality"].str.strip()
+    df["locality"] = loc.mask(loc.isin(["","N/A"])).fillna("Unknown")
+    df[["latitude", "longitude"]] = df[["latitude", "longitude"]].round(6)
+    for c in ["first_measured_utc", "last_measured_utc"]:
+        df[c] =pd.to_datetime(df[c], utc=True, errors="coerce")
 
-
-    # 3. sensors is a list of dicts per row -> explode so each sensor gets
-    #    its own row, then flatten the dict into columns
-    sensor_df = df[["id", "sensors"]].explode("sensors").reset_index(drop=True)
-    sensor_df = sensor_df.rename(columns={"id": "location_id"})
-    sensor_df = pd.concat(
-        [sensor_df.drop(columns=["sensors"]), pd.json_normalize(sensor_df["sensors"])],
-        axis=1,
-    )
-    sensor_df.columns = sensor_df.columns.str.replace(".", "_", regex=False)
-    sensor_df = sensor_df.rename(columns={"id": "sensors_id"})
-    df = df.drop(columns="sensors")
-
-
-    # 4. licenses is a list of dicts (sometimes empty) -> explode, drop the
-    #    empty rows, then flatten the dict into columns
-    license_df_data = df[["id", "licenses"]].explode("licenses").reset_index(drop=True)
-    license_df_data = license_df_data.rename(columns={"id": "location_id"})
-    license_df_data = license_df_data[license_df_data["licenses"].notna()].reset_index(drop=True)
-    license_df_data = pd.concat(
-        [license_df_data.drop(columns=["licenses"]), pd.json_normalize(license_df_data["licenses"])],
-        axis=1,
-    )
-    license_df_data = license_df_data.rename(columns={"id": "license_id"})
-
-
-    # 5. instruments is a list of dicts per row -> same explode + flatten pattern
-    df_instrument = df[["id", "instruments"]].explode("instruments").reset_index(drop=True)
-    df_instrument = df_instrument.rename(columns={"id": "instrument_id"})
-    df_instrument = pd.concat(
-        [df_instrument.drop(columns=["instruments"]), pd.json_normalize(df_instrument["instruments"])],
-        axis=1,
-    )
-
-
-    # instruments/licenses have now been split out into their own tables,
-    # so drop the original nested columns from the parent table
-    df = df.drop(columns=["instruments", "licenses"])
-
-
-    # 6. tidy column names produced by json_normalize (e.g. "coordinates.latitude"
-    #    -> "coordinates_latitude")
-    df.columns = df.columns.str.replace(".", "_", regex=False)
-
-
-    # 7. parse the timestamp columns as real datetimes instead of strings
-    date_cols = ["datetimeFirst_utc", "datetimeFirst_local", "datetimeLast_utc", "datetimeLast_local"]
-    for col in date_cols:
-        df[col] = pd.to_datetime(df[col], errors="coerce", utc=True)
-
-
-    # "distance" is null for every row, and the un-split datetimeFirst/datetimeLast
-    # dict columns are no longer needed now that *_utc/*_local exist
-    df = df.drop(columns=["datetimeFirst", "datetimeLast", "distance"])
-
-
-    # 8. min_lat/max_lax and min_lon/max_lon were found to be identical in every
-    #    row, so keep only one of each pair and give them clear names
-    df = df.drop(columns=["min_lat", "max_lon"])
-    df = df.rename(columns={"min_lon": "longitude", "max_lax": "latitude"})
-
-
-    # 9. fill missing locality with a readable placeholder
-    df = df.fillna({"locality": "Unknown"})
-
-
-    # 10. a handful of rows have no timestamp data at all - drop them
-    ts_cols = ["datetimeFirst_utc", "datetimeLast_utc", "datetimeFirst_local", "datetimeLast_local"]
-    df = df.dropna(subset=ts_cols)
-
-
-    # 11. the bounds-derived latitude/longitude turned out to be identical to
-    #     coordinates_latitude/coordinates_longitude - drop the redundant pair
-    df = df.drop(columns=["latitude", "longitude"])
-
-
-    # 12. write the cleaned parent table out as Parquet
+        # Create the raw data directory if it doesn't already exist
     staging_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(staging_path, engine="pyarrow", index=False, compression="snappy")
     print(f"Cleaned and processed data is written to {staging_path}, {len(df)} rows")
 
+    return df
 
-    return df, sensor_df, df_instrument, license_df_data
 
 if __name__ == "__main__":
     from config import Raw_dir
-
+    raw_json_dir = Raw_dir/"Raw_OpenAQ_20261004_142907.json"
     staging_dir = Raw_dir/ "stagingOpenAQ_platform" / "ProcessedOpenAQ_platform.parquet"
-    process_openaq_data(raw_json_path= Raw_dir, staging_path =staging_dir,)
-
-    # question
-    # since this is working with an airflow how will get the access of filename name
-    # after extracting  to reference the function process_openaq_data with the argument raw_json_path
-"""
-So instead of hardcoding "../Raw_OpenAQ_20260803_170745.json" like in your __main__ block,
-your extract task should return the path it wrote to, and your staging task should receive 
-it as a parameter:
-"""
+    process_openaq_data(raw_json_path=  raw_json_dir, staging_path =staging_dir)

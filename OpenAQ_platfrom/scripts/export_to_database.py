@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 # Create a database connection engine in python
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 # Safely encode Special Character in String (Especially Username and Password)
 from urllib.parse import quote_plus
 # load environment variable from a dot env file into python
@@ -45,7 +45,7 @@ def create_database_if_not_exists(db_name):
     with engine.connect() as conn:
         conn = conn.execution_options(isolation_level="AUTOCOMMIT")
         exists = conn.execute(
-            text("SELECT 1 FROM pg_database WHERE data_name = : name"),
+            text("SELECT 1 FROM pg_database WHERE datname = :name"),
             {"name": db_name},
         ).scalar()
         if not exists:
@@ -64,9 +64,13 @@ def load_parquet_folder_to_sql(folder_path, engine):
     for parquet_file in folder_path.glob("*.parquet"):
         table_name = parquet_file.stem.lower()
         df = pd.read_parquet(parquet_file)
-        df.to_sql(table_name, engine, if_exists="replace", index=False)
-        print(f"Loaded {table_name}")
 
+        if inspect(engine).has_table(table_name):
+            with engine.begin() as conn:
+                conn.execute(text(f'TRUNCATE "{table_name}" RESTART IDENTITY CASCADE;'))
+
+        df.to_sql(table_name, engine, if_exists="append", index=False)
+        print(f"Loaded {table_name}")
 
 def load_openaq_warehouse(db_name="openaq_warehouse"):
     """
