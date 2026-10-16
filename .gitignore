@@ -23,5 +23,5 @@ share/
 # files 
 payslim_data/payslim_raw_data/.csv
 payslim_data/staging_paysim/.parquet
-OpenAQ_platfrom/.json
+OpenAQ_platfrom/Raw_OpenAQ_*.json
 

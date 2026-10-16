@@ -43,17 +43,15 @@ def build_fact_data(staging_path, fact_path, dim_tables):
                       "instrument_id",
                       "license_id",
                       "sensor_id",
-                      'datetimeFirst_utc',
-                      'datetimeFirst_local',
-                      'datetimeLast_utc',
-                      'datetimeLast_local'
+                      "first_measured_utc",
+                        "last_measured_utc"
                       ]]
     print(fact_table.head(20))
 
     fact_path.parent.mkdir(parents=True, exist_ok=True)
     fact_table.to_parquet(fact_path, index=False, compression="snappy")
 
-    print(f"inputed written data to {fact_path}, {len(fact_table)} rows")
+    print(f"input written data to {fact_path}, {len(fact_table)} rows")
 
     return fact_table
 
