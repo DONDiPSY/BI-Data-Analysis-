@@ -26,11 +26,9 @@ def build_fact_data(staging_path, fact_path, dim_tables):
     fact_df  = fact_df.merge(dim_tables["dim_owner"], on="owner_id", how="left")
     fact_df = fact_df.merge(dim_tables["dim_provider"], on="provider_id", how="left")
     fact_df = fact_df.merge(dim_tables["dim_instrument"], on="instrument_id", how="left")
+    fact_df = fact_df.merge(dim_tables["dim_parameter"], on="parameter_id", how="left")
     fact_df = fact_df.merge(dim_tables["dim_license"], on="license_id", how="left")
-    # A surrogate key is created for dim_station , so the surrogate key can't be used to merge
-    #  station_id directly — merge on the natural key columns instead
-    fact_df = fact_df.merge(dim_tables["dim_station"], on=["name","locality", "timezone",
-    "coordinates_latitude","coordinates_longitude", "isMobile","isMonitor"], how="left")
+    fact_df = fact_df.merge(dim_tables["dim_sensor"], on=["sensor_id"], how="left")
 
 
     # Adding a surrogate key
@@ -64,8 +62,9 @@ if __name__ == "__main__":
         "dim_owner": pd.read_parquet(Dimension_dir / "Dim_owner.parquet"),
         "dim_provider": pd.read_parquet(Dimension_dir / "Dim_provider.parquet"),
         "dim_instrument": pd.read_parquet(Dimension_dir / "Dim_instrument.parquet"),
+        "dim_parameter": pd.read_parquet(Dimension_dir / "Dim_parameter.parquet"),
         "dim_license": pd.read_parquet(Dimension_dir / "Dim_license.parquet"),
-        "dim_station": pd.read_parquet(Dimension_dir / "Dim_station.parquet")
+        "dim_sensor": pd.read_parquet(Dimension_dir / "Dim_sensor.parquet")
     }
     staging_path = staging_dir/"ProcessedOpenAQ_platform.parquet"
     fact_path =  Fact_dir/"Fact_Activity.parquet"

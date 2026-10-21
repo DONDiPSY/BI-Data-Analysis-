@@ -10,14 +10,15 @@ from Dipsy.OpenAQ_platfrom.scripts.Dim_license import build_license_data
 from Dipsy.OpenAQ_platfrom.scripts.Dim_sensor import build_sensor_data
 from Dipsy.OpenAQ_platfrom.scripts.Fact_Station_Activity import build_fact_data
 from Dipsy.OpenAQ_platfrom.scripts.export_to_database import load_openaq_warehouse
-from Dipsy.OpenAQ_platfrom.scripts.config import Dimension_dir, Fact_dir, Raw_dir, staging_dir
+from Dipsy.OpenAQ_platfrom.scripts.config import Dimension_dir, Fact_dir, Raw_dir, staging_dir, Bridge_dir
 from Dipsy.OpenAQ_platfrom.scripts.Dim_provider import build_provider_data
-
+from Dipsy.OpenAQ_platfrom.scripts.bridge_location_instrument import build_bridge_loc_instrument_data
+from Dipsy.OpenAQ_platfrom.scripts.bridge_location_license import build_bridge_loc_license_data
 
 
 @dag(
     schedule ="@daily",
-    start_date = pendulum.datetime(2026, 1, 1, tz="UTC"),
+    start_date = pendulum.datetime(2026, 10, 1, tz="UTC"),
     catchup= False,
     tags = ["api", "postgres", "warehouse", "openaq"],
 )
@@ -68,7 +69,13 @@ def openaq_pipeline():
         return str(dim_license_path)
 
     @task
-    def make_station_dim(staging_path:str)->str:
+    def make_parameter_dim(staging_path:str)->str:
+        dim_parameter_path= Dimension_dir/"Dim_parameter.parquet"
+        build_sensor_data(staging_path,  dim_parameter_path)
+        return str( dim_parameter_path)
+
+    @task
+    def make_sensor_dim(staging_path:str)->str:
         dim_sensor_path= Dimension_dir/"Dim_sensor.parquet"
         build_sensor_data(staging_path,  dim_sensor_path)
         return str( dim_sensor_path)
@@ -79,15 +86,28 @@ def openaq_pipeline():
         return str(dim_provider_path)
 
     @task
+    def make_bridge_instrument(staging_path:str)->str:
+        bridge_instrument_path = Bridge_dir/"Bridge_location_instrument.parquet"
+        build_bridge_loc_instrument_data(staging_path, bridge_instrument_path)
+        return str(bridge_instrument_path)
+
+    @task
+    def make_bridge_license(staging_path:str)->str:
+        bridge_license_path = Bridge_dir/"Bridge_location_license.parquet"
+        build_bridge_loc_license_data(staging_path, bridge_license_path)
+        return str(bridge_license_path)
+
+
+    @task
     def make_fact(staging_path:str, country_path:str, owner_path:str,
-                  provider_path:str, instrument_path, license_path,station_path:str)->str:
+                  provider_path:str, instrument_path, license_path, sensor_path:str)->str:
         dim_tables ={
             "dim_country" : pd.read_parquet(country_path),
             "dim_owner" : pd.read_parquet(owner_path),
             "dim_provider" : pd.read_parquet(provider_path),
             "dim_instrument" : pd.read_parquet(instrument_path),
             "dim_license" : pd.read_parquet(license_path),
-            "dim_station" : pd.read_parquet(station_path)
+            "dim_sensor" : pd.read_parquet(sensor_path)
         }
         fact_path = Fact_dir/"Fact_Activity.parquet"
         build_fact_data(staging_path,dim_tables, fact_path)
@@ -101,9 +121,9 @@ def openaq_pipeline():
     provider_path = make_provider_dim(staging_path)
     instrument_path = make_instrument_dim(staging_path)
     license_path = make_license_dim(staging_path)
-    station_path = make_station_dim(staging_path)
+    sensor_path = make_sensor_dim(staging_path)
 
-    fact_path= make_fact(staging_path, country_path, owner_path, provider_path, instrument_path, license_path,station_path)
+    fact_path= make_fact(staging_path, country_path, owner_path, provider_path, instrument_path, license_path, sensor_path)
 
     @task
     def export_tto_database() :
@@ -113,3 +133,4 @@ def openaq_pipeline():
     fact_path >> load_task
 
 openaq_pipeline()
+

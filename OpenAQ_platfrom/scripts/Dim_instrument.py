@@ -30,7 +30,7 @@ def build_instrument_data(staging_path, dim_path):
     df = pd.read_parquet(staging_path)
     # pull out the instrument_id and name
     print(df.columns)
-    dim_instrument = df[["instrument_id","location_id", "instrument_name"]].drop_duplicates(["location_id", "instrument_id"]).reset_index(drop=True)
+    dim_instrument = df[["instrument_id","location_id", "instrument_name"]].drop_duplicates().reset_index(drop=True)
     dim_instrument = dim_instrument[["instrument_id","instrument_name"]].drop_duplicates()
     # sanity check: if instrument_id really identifies one names, the number of
     # unique rows here should match the number of unique instrument_id values in

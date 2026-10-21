@@ -27,10 +27,10 @@ def process_openaq_data(raw_json_path, staging_path):
     # dictionary comprehension key: value for item in iterable
     data = list({loc["id"]: loc for loc in data}.values())
     # confused
-    # 2. sanity: bounds must be  the station point otherwise don't drop them
-    non_point = [i["id"] for i in data
-                 if not i.get("bounds")
-                 or not np.allclose(i["bounds"], [i["coordinates"]["longitude"],i["coordinates"]["latitude"]] * 2)]
+    # 2. Confirm that bounds equal the station point. If they don’t,
+    # tell me instead of silently dropping those locations
+    non_point = [i["id"] for i in data if not i.get("bounds") or not np.allclose(i["bounds"],
+                [i["coordinates"]["longitude"],i["coordinates"]["latitude"]] * 2)]
     if non_point:
         print(f"⚠️ bounds differ from the point for locations: {non_point}")
 
@@ -52,7 +52,11 @@ def process_openaq_data(raw_json_path, staging_path):
                              "license_name": lic["name"],
                              "date_from":lic.get("dateFrom"), "date_to":lic.get("dateTo")})
 
-     # drop parent tables
+    sensors_df = pd.DataFrame(sensors)
+    instruments_df = pd.DataFrame(instruments)
+    licenses_df = pd.DataFrame(licenses)
+
+    # drop parent tables
     df = pd.json_normalize(data).drop(columns=["sensors", "instruments", "licenses", "bounds", "distance","datetimeFirst", "datetimeLast",
                  "datetimeFirst.local", "datetimeLast.local"], errors="ignore")
     # rename columns with "." to "_"
@@ -65,18 +69,22 @@ def process_openaq_data(raw_json_path, staging_path):
         "datetimeFirst.utc": "first_measured_utc", "datetimeLast.utc": "last_measured_utc",
         "isMobile": "is_mobile", "isMonitor": "is_monitor"})
    # remove white space in fields
+    df = pd.concat([sensors_df, df], ignore_index=True)
+    df = pd.concat([instruments_df, df], ignore_index=True)
+    df = pd.concat([ licenses_df, df], ignore_index=True)
     df["location_name"] = df["location_name"].str.strip()
     loc = df["locality"].str.strip()
     df["locality"] = loc.mask(loc.isin(["","N/A"])).fillna("Unknown")
     df[["latitude", "longitude"]] = df[["latitude", "longitude"]].round(6)
     for c in ["first_measured_utc", "last_measured_utc"]:
         df[c] =pd.to_datetime(df[c], utc=True, errors="coerce")
+        # issues
 
         # Create the raw data directory if it doesn't already exist
     staging_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(staging_path, engine="pyarrow", index=False, compression="snappy")
     print(f"Cleaned and processed data is written to {staging_path}, {len(df)} rows")
-
+    print(df.columns)
     return df
 
 

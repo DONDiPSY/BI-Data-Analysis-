@@ -6,7 +6,7 @@ def build_sensor_data(staging_path, dim_sensor_path):
     dim_sensor_path = Path(dim_sensor_path)
     df = pd.read_parquet(staging_path)
     # keep only unique rows , combinations, reset the index to start cleanly from 0
-    dim_sensor = df[["sensor_id","location_id","parameter_id", "parameter_name", "display_name","units"]].drop_duplicates("sensor_id").reset_index(drop=True)
+    dim_sensor = df[["sensor_id","location_id","parameter_id"]].drop_duplicates("sensor_id").reset_index(drop=True)
 
     dim_sensor["sensors_for_same_parameter"] = (
     dim_sensor.groupby(["location_id", "parameter_id"])["sensor_id"]).transform("count")
