@@ -6,10 +6,10 @@ def build_sensor_data(staging_path, dim_sensor_path):
     dim_sensor_path = Path(dim_sensor_path)
     df = pd.read_parquet(staging_path)
     # keep only unique rows , combinations, reset the index to start cleanly from 0
-    dim_sensor = df[["sensor_id","location_id","parameter_id"]].drop_duplicates("sensor_id").reset_index(drop=True)
+    dim_sensor = df[["sensor_id","sensor_name","location_id"]].drop_duplicates(subset=["sensor_id"]).reset_index(drop=True)
+    dim_sensor.insert(0, "sensor_key", dim_sensor.index + 50120)
+    dim_sensor["sensor_key"] = dim_sensor["sensor_key"].astype(int)
 
-    dim_sensor["sensors_for_same_parameter"] = (
-    dim_sensor.groupby(["location_id", "parameter_id"])["sensor_id"]).transform("count")
 
 
     # curious why dim_sensor should have columns  and why bridge_
@@ -24,7 +24,7 @@ def build_sensor_data(staging_path, dim_sensor_path):
 if __name__ == "__main__":
     from config import staging_dir, Dimension_dir
     # location save the parquet file
-    staging_path = staging_dir / "ProcessedOpenAQ_platform.parquet"
+    staging_path = staging_dir / "processed_sensorsOpenAQ_platform.parquet"
     dim_sensor_path = Dimension_dir/"Dim_sensor.parquet"
     build_sensor_data(staging_path, dim_sensor_path)
 

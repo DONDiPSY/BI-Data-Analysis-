@@ -24,25 +24,26 @@ def build_parameter_data(staging_path, dim_path):
         """
     dim_path = Path(dim_path)
     df = pd.read_parquet(staging_path)
-    dim_paramter = (df[['parameter_id','parameter_name','units','display_name']]
-                    .drop_duplicates().reset_index(drop=True))
+    dim_parameter = df[['parameter_id','parameter_name','parameter_units','parameter_display_name']].drop_duplicates('parameter_id').reset_index(drop=True)
+    dim_parameter.insert(0, "parameter_key", dim_parameter.index + 4430)
+    dim_parameter["parameter_key"] = dim_parameter["parameter_key"].astype(int)
 
 
-    assert len(dim_paramter) == df["parameter_id"].nunique(), "Mismatch — investigate duplicates further"
+    assert len(dim_parameter) == df["parameter_id"].nunique(), "Mismatch — investigate duplicates further"
 
 
-    print(dim_paramter.head())
-    print(f"Total unique Parameters: {len(dim_paramter)}")
+    print(dim_parameter.head())
+    print(f"Total unique Parameters: {len(dim_parameter)}")
 
     dim_path.parent.mkdir(parents=True, exist_ok=True)
-    dim_paramter.to_parquet(dim_path, engine="pyarrow", index=False, compression="snappy")
-    print(f"Clean and processed data is written to {dim_path}, {len(dim_paramter)} rows")
+    dim_parameter.to_parquet(dim_path, engine="pyarrow", index=False, compression="snappy")
+    print(f"Clean and processed data is written to {dim_path}, {len(dim_parameter)} rows")
 
-    return dim_paramter
+    return dim_parameter
 
 if __name__ == "__main__":
     from config import staging_dir, Dimension_dir
-    staging_path = staging_dir/ "ProcessedOpenAQ_platform.parquet"
-    dim_path = Dimension_dir / "Dim_paramter.parquet"
+    staging_path = staging_dir/ "processed_sensorsOpenAQ_platform.parquet"
+    dim_path = Dimension_dir / "Dim_parameter.parquet"
 
     build_parameter_data(staging_path, dim_path)

@@ -12,7 +12,7 @@ from Dipsy.OpenAQ_platfrom.scripts.Fact_Station_Activity import build_fact_data
 from Dipsy.OpenAQ_platfrom.scripts.export_to_database import load_openaq_warehouse
 from Dipsy.OpenAQ_platfrom.scripts.config import Dimension_dir, Fact_dir, Raw_dir, staging_dir, Bridge_dir
 from Dipsy.OpenAQ_platfrom.scripts.Dim_provider import build_provider_data
-from Dipsy.OpenAQ_platfrom.scripts.bridge_location_instrument import build_bridge_loc_instrument_data
+from Dipsy.OpenAQ_platfrom.scripts.bridge_sensor_location import build_bridge_loc_instrument_data
 from Dipsy.OpenAQ_platfrom.scripts.bridge_location_license import build_bridge_loc_license_data
 
 

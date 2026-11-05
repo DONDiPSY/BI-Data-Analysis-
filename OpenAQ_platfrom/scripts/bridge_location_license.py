@@ -1,6 +1,6 @@
 import pandas as pd
 from pathlib import Path
-def  build_bridge_loc_license_data(staging_path, bridge_path):
+def  build_bridge_loc_license_data(staging_path, dim_path ,bridge_path):
     """
 
     :param staging_path:
@@ -13,7 +13,14 @@ def  build_bridge_loc_license_data(staging_path, bridge_path):
     """
     bridge_path = Path(bridge_path)
     df = pd.read_parquet(staging_path)
-    bridge_license = df[["location_id","location_id", "license_id", "date_from", "date_to"]].drop_duplicates().reset_index(drop=True)
+    dim_location = pd.read_parquet(dim_path["location"])
+    dim_license = pd.read_parquet(dim_path["license"])
+    bridge_license = df[["location_id", "license_id"]].drop_duplicates().reset_index(drop=True)
+    bridge_license = bridge_license.merge(dim_location[["location_id","location_key"]], on="location_id", how="left")
+    bridge_license =bridge_license.merge(dim_license[["license_key", "license_id"]], on="license_id", how="left")
+    bridge_license = (bridge_license[["license_key", "location_key"]])
+
+
     bridge_path.parent.mkdir(parents=True, exist_ok=True)
     bridge_license.to_parquet(bridge_path,  engine="pyarrow", index=False, compression="snappy")
     print(f"Cleaned and processed data is written to {bridge_path}, {len(bridge_license)} rows")
@@ -21,7 +28,11 @@ def  build_bridge_loc_license_data(staging_path, bridge_path):
 
 
 if __name__ == "__main__":
-    from config import staging_dir, Bridge_dir
-    staging_path = staging_dir / "ProcessedOpenAQ_platform.parquet"
+    from config import staging_dir,Dimension_dir, Bridge_dir
+    staging_path = staging_dir / "processed_licenseOpenAQ_platform.parquet"
+    dim_path = {
+        "location": Dimension_dir / "Dim_location.parquet",
+        "license" : Dimension_dir / "Dim_license.parquet"
+                }
     bridge_path = Bridge_dir / "Bridge_location_license.parquet"
-    build_bridge_loc_license_data(staging_path, bridge_path)
+    build_bridge_loc_license_data(staging_path, dim_path, bridge_path)

@@ -21,8 +21,8 @@ def build_instrument_data(staging_path, dim_path):
            Returns
            -------
            dim_instrument : pd.DataFrame
-               One row per unique instrument_id, with "name"
-               and 'country_name'.
+               One row per unique instrument_id, with "instrument_name"
+               .
            """
 
 
@@ -30,8 +30,10 @@ def build_instrument_data(staging_path, dim_path):
     df = pd.read_parquet(staging_path)
     # pull out the instrument_id and name
     print(df.columns)
-    dim_instrument = df[["instrument_id","location_id", "instrument_name"]].drop_duplicates().reset_index(drop=True)
-    dim_instrument = dim_instrument[["instrument_id","instrument_name"]].drop_duplicates()
+    # duplicate must be removed first before creating surrogate key
+    dim_instrument = df[["instrument_id", "instrument_name", "location_id"]].drop_duplicates(subset=["instrument_id"]).reset_index(drop=True)
+    dim_instrument.insert(0,"instrument_key", dim_instrument.index + 2000)
+    dim_instrument["instrument_key"] = dim_instrument["instrument_key"].astype(int)
     # sanity check: if instrument_id really identifies one names, the number of
     # unique rows here should match the number of unique instrument_id values in
     # the staging data. assert stops execution immediately (with the given
@@ -52,7 +54,7 @@ def build_instrument_data(staging_path, dim_path):
 if __name__ == "__main__":
     from config import staging_dir, Dimension_dir
 
-    staging_path = staging_dir/"ProcessedOpenAQ_platform.parquet"
+    staging_path = staging_dir/"processed_instrumentOpenAQ_platform.parquet"
     dim_path = Dimension_dir / "Dim_instrument.parquet"
 
 build_instrument_data(staging_path, dim_path)

@@ -26,15 +26,31 @@ def build_country_data(staging_path, dim_path):
 
     dim_path =Path(dim_path)
     df = pd.read_parquet(staging_path)
+    print("Staging rows:", len(df))
+    print(df.columns)
+
+    print("Unique country IDs:", df["country_id"].nunique())
 
 
-    # pull just the country-related columns and collapse to one row per country
-    dim_country = (
-        df[["country_id", "country_code", "country_name"]]
-        .drop_duplicates()
-        .reset_index(drop=True)
+
+    print("Missing country IDs:", df["country_id"].isna().sum())
+
+    print(
+        df.loc[
+            df["country_id"].isna(),
+            ["country_id", "country_code", "country_name"]
+        ].drop_duplicates()
     )
+    print(type(df))
+    print(type(df["country_id"]))
+    print(df.columns[df.columns == "country_id"].tolist())
+    print(df.columns.is_unique)
+    # pull just the country-related columns and collapse to one row per country
+    dim_country = df[["country_id", "country_code", "country_name"]].drop_duplicates(subset=["country_id"]).reset_index(drop=True)
+    dim_country.insert(0, "country_key", dim_country.index + 10101)
+    dim_country["country_key"] = dim_country["country_key"].astype(int)
 
+    print("Dimension rows:", len(dim_country))
 
     # sanity check: if country_id really identifies one country, the number of
     # unique rows here should match the number of unique country_id values in
@@ -61,8 +77,8 @@ def build_country_data(staging_path, dim_path):
 if __name__ == "__main__":
     from config import staging_dir, Dimension_dir
 
-    staging_path = staging_dir / "ProcessedOpenAQ_platform.parquet"
-    dim_path = Dimension_dir / "Dim_country.parquet"
+    staging_path = staging_dir /"processed_sensorsOpenAQ_platform.parquet"
+    dim_path = Dimension_dir /"Dim_country.parquet"
 
 
     build_country_data(staging_path, dim_path)

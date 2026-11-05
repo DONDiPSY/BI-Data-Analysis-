@@ -26,10 +26,12 @@ def build_license_data(staging_path, dim_path):
     staging_data = Path(staging_path)
     df = pd.read_parquet(staging_data)
     # pull out the license related columns  and collapse to one row per license
-    dim_license = df[["license_id", "license_name", "date_from", "date_to"]].drop_duplicates(["location_id", "license_id"]).reset_index(drop=True)
-
-    for time in ["date_from", "date_to"]:
-        dim_license[time] = pd.to_datetime(dim_license[time], errors="coerce").dt.date
+    dim_license = df[["license_id", "license_name", "license_attribution_name", "license_attribution_url",
+                      "license_dateFrom", "license_dateTo" ]].drop_duplicates(subset=["license_id"]).reset_index(drop=True)
+    dim_license.insert(0,"license_key", dim_license.index +3300)
+    dim_license["license_key"] = dim_license["license_key"].astype(int)
+    for time in ["license_dateFrom", "license_dateTo"]:
+        dim_license[time] = pd.to_datetime(dim_license[time], format="%Y-%m-%d", errors="coerce").dt.date
 
 
     # sanity check: if license_id really identifies one names, the number of
@@ -50,7 +52,7 @@ def build_license_data(staging_path, dim_path):
 
 if __name__ == "__main__":
     from config import staging_dir, Dimension_dir
-    staging_dir = staging_dir / "ProcessedOpenAQ_platform.parquet"
+    staging_dir = staging_dir / "processed_licenseOpenAQ_platform.parquet"
     dim_path = Dimension_dir / "Dim_license.parquet"
 
     build_license_data(staging_dir, dim_path)

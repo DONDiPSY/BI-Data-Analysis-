@@ -71,7 +71,7 @@ def extract_data(url, headers, raw_dir, max_pages=10, timeout=80, max_retries=3)
                     break
                 else:
                     # A non-200 status (e.g. 404, 500) usually won't be fixed
-                    # by retrying, so log it and move on without retrying
+                    # break exits the retry loop , so log it and move to next page
                     print(f"Failed to retrieve page {page}. Status code: {response.status_code}")
                     break
 
