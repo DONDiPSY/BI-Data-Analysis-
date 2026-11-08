@@ -1,9 +1,13 @@
+from wsgiref import validate
+
 import pandas as pd
 from pathlib import Path
 
 def attach_key(df, dim, natural_key , surrogate_key, name):
   """Look up one dimension's surrogate key and check nothing  went wrong."""
   row_before = len(df)
+  df = df.copy()
+  df[natural_key] = df[natural_key].fillna(-1)
   out = df.merge(dim[[natural_key, surrogate_key]],on =natural_key, how="left", validate="m:1")
   assert len(out) == row_before, f"{name} : row count changed "
   print(f"{name}: {out[surrogate_key].isna().sum()} rows with no match")
@@ -29,18 +33,26 @@ def build_fact_data(staging_path, fact_path, dim_tables):
         The fact table with a surrogate 'weather_id' plus each dimension's key.
     """
 
-
+    staging_location = staging_path["processed_location"]
     staging_license = staging_path["processed_license"]
     staging_sensor = staging_path["processed_sensor"]
 
-
+    loc_attrs = (
+        staging_location[["location_id", "country_id", "owner_id", "provider_id"]]
+        .drop_duplicates()
+    )
+    assert loc_attrs["location_id"].is_unique
     #  Base table: one row per sensor.
-    base = staging_sensor[["sensor_id", "location_id", "parameter_id","provider_id"]]
+    base = staging_sensor[["sensor_id", "location_id", "parameter_id"]].merge(
+        loc_attrs, on ="location_id", how= "left", validate="m:1"
+    )
 
-    Base =base.merge(staging_license[["location_id", "license_id", "country_id", "owner_id"]],
+    Base =base.merge(staging_license[["location_id", "license_id"]].drop_duplicates(),
                      on="location_id", how= "left", validate="m:1")
 
     fact_df = Base
+    for col in ["license_id", "country_id", "owner_id"]:
+        print(col, "-> NaN before lookup:", fact_df[col].isna().sum())
     for natural, surrogate , dim in[
         ("location_id", "location_key", "dim_location"),
         ("license_id", "license_key", "dim_license"),
@@ -82,6 +94,7 @@ if __name__ == "__main__":
     }
 
     staging_path = {
+        "processed_location" : pd.read_parquet(staging_dir/"processed_instrumentOpenAQ_platform.parquet"),
         "processed_license" : pd.read_parquet(staging_dir/"processed_licenseOpenAQ_platform.parquet"),
         "processed_sensor" : pd.read_parquet(staging_dir /"processed_sensorsOpenAQ_platform.parquet")
 
@@ -93,7 +106,7 @@ if __name__ == "__main__":
 
 
 """
-Removed Dimension Instrument from fact table due to many to many location on instrument 
+Removed Dimension Instrument from fact table due to one to many location on instrument 
 there is a duplicate of  same location_id  on particular instrument 
 created a bridge on that already 
 

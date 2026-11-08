@@ -260,13 +260,13 @@ def process_openaq_data(raw_json_path, staging_path):
             raise ValueError(f"Unknown staging file: {name}")
 
         output_df.to_parquet(
-            path,
+            S_path,
             engine="pyarrow",
             index=False,
             compression="snappy"
         )
 
-        print(f"Saved {name}: {path}")
+        print(f"Saved {name}: {S_path}")
     print(sensor_staging_df.isna().sum().sort_values(ascending=False))
     print(license_staging_df.isna().sum().sort_values(ascending=False))
     print(instrument_staging_df.isna().sum().sort_values(ascending=False))

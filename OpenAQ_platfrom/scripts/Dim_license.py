@@ -41,6 +41,19 @@ def build_license_data(staging_path, dim_path):
     # rather than silently writing a broken dimension table.
     assert len(dim_license) == df["license_id"].nunique(), "Mismatch — investigate duplicates further"
 
+
+    # Unknown member: for fact rows whose location has no license
+    unknown = pd.DataFrame([{
+        "license_key": -1,
+        "license_id": -1,
+        "license_name": "Unknown",
+        "license_attribution_name": "Unknown",
+        "license_attribution_url": None,
+        "license_dateFrom": None,
+        "license_dateTo": None,
+    }])
+    dim_license = pd.concat([unknown, dim_license], ignore_index=True)
+
     print(dim_license.head())
     print(f"Total unique licenses : {len(dim_license)}")
 
