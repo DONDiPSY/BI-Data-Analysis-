@@ -20,7 +20,7 @@ from Dipsy.OpenAQ_platfrom.scripts.bridge_location_license import build_bridge_l
 default_args = {
     "owner": "data_engineering",
     "retries": 2,
-    "retry_delay": pendulum.timedelta(minute=5),
+    "retry_delay": pendulum.duration(minute=5),
 }
 
 
@@ -50,96 +50,87 @@ def openaq_pipeline():
         # ... your actual API call / download logic writes to raw_path here ...
         extract_data(save_path=raw_json_path)
         return str(raw_json_path)
-    # build instrument staging file
+    # build staging file  by make use of dict
     @task
-    def staging_instrument(raw_json_path:str)->str:
-        output_path1 = staging_dir/"processed_instrumentOpenAQ_platform.parquet"
+    def stage_openaq(raw_json_path:str)->dict:
 
-        process_openaq_data(raw_json_path =raw_json_path, staging_path=output_path1)
-        return str(output_path1)
+        staging_paths = {
+            "instrument": str(staging_dir / "processed_instrumentOpenAQ_platform.parquet"),
+            "license" : str(staging_dir / "processed_licenseOpenAQ_platform.parquet"),
+            "sensor" : str(staging_dir / "processed_sensorsOpenAQ_platform.parquet"),
+        }
+        process_openaq_data(raw_json_path, staging_paths)
+        return  staging_paths
 
-    # build license staging file
-    @task
-    def staging_license(raw_json_path: str) -> str:
-        output_path2= staging_dir / "processed_licenseOpenAQ_platform.parquet"
 
-        process_openaq_data(raw_json_path=raw_json_path, staging_path=output_path2)
-        return str(output_path2)
 
-    # build sensor staging file
-    @task
-    def staging_sensor(raw_json_path: str) -> str:
-        output_path3 = staging_dir / "processed_sensorsOpenAQ_platform.parquet"
-
-        process_openaq_data(raw_json_path=raw_json_path, staging_path=output_path3)
-        return str(output_path3)
 
     @task
-    def make_location_dim(output_path1: str) -> str:
+    def make_location_dim(staging_path: str) -> str:
         dim_location_path = Dimension_dir / "Dim_location.parquet"
-        build_location_data(staging_path=output_path1, dim_path= dim_location_path)
+        build_location_data(staging_path=staging_path, dim_path= dim_location_path)
         return str( dim_location_path)
 
     @task
-    def make_country_dim(output_path3:str)->str:
+    def make_country_dim(staging_path:str)->str:
         dim_country_path = Dimension_dir/"Dim_country.parquet"
-        build_country_data(staging_path=output_path3, dim_path=dim_country_path)
+        build_country_data(staging_path=staging_path, dim_path=dim_country_path)
         return str(dim_country_path)
     @task
-    def make_owner_dim(output_path3:str)->str:
+    def make_owner_dim(staging_path:str)->str:
         dim_owner_path = Dimension_dir/"Dim_owner.parquet"
-        build_owner_data(output_path3, dim_owner_path)
+        build_owner_data(staging_path, dim_owner_path)
         return str(dim_owner_path)
 
     @task
-    def make_parameter_dim(output_path3: str) -> str:
+    def make_parameter_dim(staging_path: str) -> str:
         dim_parameter_path = Dimension_dir / "Dim_parameter.parquet"
-        build_parameter_data(output_path3, dim_parameter_path)
+        build_parameter_data(staging_path, dim_parameter_path)
         return str(dim_parameter_path)
 
     @task
-    def make_instrument_dim(output_path1: str) -> str:
+    def make_instrument_dim(staging_path: str) -> str:
         dim_instrument_path = Dimension_dir / "Dim_instrument.parquet"
-        build_instrument_data(output_path1, dim_instrument_path)
+        build_instrument_data(staging_path, dim_instrument_path)
         return str(dim_instrument_path)
 
     @task
-    def make_license_dim(output_path2: str) -> str:
+    def make_license_dim(staging_path: str) -> str:
         dim_license_path = Dimension_dir / "Dim_license.parquet"
-        build_license_data(output_path2, dim_license_path)
+        build_license_data(staging_path, dim_license_path)
         return str(dim_license_path)
 
 
 
     @task
-    def make_sensor_dim(output_path3:str)->str:
+    def make_sensor_dim(staging_path:str)->str:
         dim_sensor_path= Dimension_dir/"Dim_sensor.parquet"
-        build_sensor_data(output_path3,  dim_sensor_path)
+        build_sensor_data(staging_path,  dim_sensor_path)
         return str( dim_sensor_path)
     @task
-    def make_provider_dim(output_path3:str)->str:
+    def make_provider_dim(staging_path:str)->str:
         dim_provider_path= Dimension_dir/"Dim_provider.parquet"
-        build_provider_data(output_path3,dim_provider_path)
+        build_provider_data(staging_path,dim_provider_path)
         return str(dim_provider_path)
 
     @task
-    def make_bridge_instrument(output_path1:str)->str:
+    def make_bridge_instrument(staging_path:str)->str:
         bridge_instrument_path = Bridge_dir/"Bridge_location_instrument.parquet"
-        build_loc_instrument_data(output_path1, bridge_instrument_path)
+        build_loc_instrument_data(staging_path, bridge_instrument_path)
         return str(bridge_instrument_path)
 
     @task
-    def make_bridge_license(output_path2:str)->str:
+    def make_bridge_license(staging_path:str)->str:
         bridge_license_path = Bridge_dir/"Bridge_location_license.parquet"
-        build_bridge_loc_license_data(output_path2, bridge_license_path)
+        build_bridge_loc_license_data(staging_path, bridge_license_path)
         return str(bridge_license_path)
 
 
     @task
-    def make_fact(output_path1:str,output_path2,output_path3, location_path,country_path:str, owner_path:str, parameter_path,
-                  provider_path:str, instrument_path, license_path, sensor_path:str)->str:
+    def make_fact(staging_path,location_path,country_path, owner_path, parameter_path,
+                  provider_path, instrument_path, license_path, sensor_path)->str:
 
-        staging_path = [output_path1,output_path2, output_path3]
+
 
         dim_tables ={
             "dim_location" : pd.read_parquet(location_path),
@@ -152,32 +143,37 @@ def openaq_pipeline():
             "dim_sensor" : pd.read_parquet(sensor_path)
         }
         fact_path = Fact_dir/"Fact_Activity.parquet"
-        build_fact_data(staging_path,dim_tables, fact_path)
+        build_fact_data(staging_path, fact_path, dim_tables)
         return str(fact_path)
 
     real_raw_path = extract_openaq()
-    output_path1 = staging_instrument(real_raw_path)
-    output_path2 = staging_license(real_raw_path)
-    output_path3 = staging_sensor(real_raw_path)
+    staging_paths = stage_openaq(real_raw_path)
+    output_path1 = staging_paths["instrument"]
+    output_path2 =staging_paths["license"]
+    output_path3 = staging_paths["sensor"]
 
     location_path = make_location_dim(output_path1)
-    parameter_path = make_parameter_dim(output_path3)
     country_path = make_country_dim(output_path3)
     owner_path = make_owner_dim(output_path3)
+    parameter_path = make_parameter_dim(output_path3)
     provider_path = make_provider_dim(output_path3)
     instrument_path = make_instrument_dim(output_path1)
     license_path = make_license_dim(output_path2)
     sensor_path = make_sensor_dim(output_path3)
 
-    fact_path= make_fact(output_path1,output_path2,output_path3, location_path,parameter_path,
-                    country_path, owner_path, provider_path, instrument_path, license_path, sensor_path)
+    # Bridge tables
+    bridge_instrument_path = make_bridge_instrument(output_path1)
+    bridge_license_path = make_bridge_license(output_path2)
+
+    fact_path= make_fact(output_path1,output_path2,output_path3, location_path,country_path,owner_path,
+                        parameter_path,provider_path, instrument_path, license_path, sensor_path)
 
     @task
     def export_tto_database() :
         load_openaq_warehouse()
 
     load_task = export_tto_database()
-    fact_path >> load_task
+    [fact_path, bridge_instrument_path, bridge_license_path] >> load_task
 
 openaq_pipeline()
 
