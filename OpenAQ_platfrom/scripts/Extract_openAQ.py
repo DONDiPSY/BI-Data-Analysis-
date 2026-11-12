@@ -1,7 +1,9 @@
 import requests
 import json
+import  os
 import time
 from pathlib import Path
+from dotenv import load_dotenv
 from datetime import datetime
 
 
@@ -114,17 +116,16 @@ def extract_data(url, headers, raw_dir, max_pages=10, timeout=80, max_retries=3)
 if __name__ == "__main__":
     # Import the raw data output directory from your config module
     from config import Raw_dir
-
+    load_dotenv()
     # Base OpenAQ endpoint — page numbers get appended to this in extract_data()
     url = "https://api.openaq.org/v3/locations"
-
     # OpenAQ API key
-    api_key = "2aa5f014dacd89de622df3de68d988b63da1464c682fbd8d2598b5b1ace91e95"
+    key = os.getenv("API_KEY")
 
     # Headers sent with every request: the API key, and telling the server
     # we want a JSON response back
     headers = {
-        "X-API-Key": api_key,
+        "X-API-Key": key,
         "Accept": "application/json"
     }
 
