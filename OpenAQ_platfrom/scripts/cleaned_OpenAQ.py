@@ -18,12 +18,13 @@ def process_openaq_data(raw_json_path, staging_path):
     print(type(data))
     print(len(data))
     print(data[0].keys())
-    print(f"bounds : {data[0]['bounds'][0:4]}")
-    print(f"Parameter : {data[0]['sensors'][0]['parameter']}")
-    print(f"Sensor: {data[0]['sensors']}")
-    print(f"coordinates: {data[0]['coordinates']}")
-    print(f"country: {data[0]['country']}")
-    print(f"instrument:{data[0]['instruments']}")
+    print(f"bounds : {data[0]['bounds'][0:4]}") # list
+    print(f"Parameter : {data[0]['sensors'][0]['parameter']}") # dict
+    print(f"Sensor: {data[0]['sensors']}") # dict in a list
+    print(f"coordinates: {data[0]['coordinates']}") # dict
+    print(f"country: {data[0]['country']}")  # dict
+    print(f"instrument:{data[0]['instruments']}") # dict in a list
+    print(f"licenses:{data[0]['licenses']}") # dict in a list
 
 
     # 2. Flatten nested location-level dictionaries
@@ -61,9 +62,9 @@ def process_openaq_data(raw_json_path, staging_path):
         "owner_name": "owner_name",
         "provider_id": "provider_id",
         "provider_name": "provider_name",
-        "datetimeFirst_utc": "first_datetime_utc",
+        "datetimeFirst_utc": "datetime_utc",
         "datetimeLast_utc": "last_datetime_utc",
-        "datetimeFirst_local": "first_datetime_local",
+        "datetimeFirst_local": "datetime_local",
         "datetimeLast_local": "last_datetime_local",
     })
 
@@ -72,7 +73,7 @@ def process_openaq_data(raw_json_path, staging_path):
                 "country_name", "owner_name", "provider_name"]:
         if col in df.columns:
             df[col] = df[col].replace(r"^\s*$", pd.NA, regex=True)
-    data_columns = ["first_datetime_utc", "last_datetime_utc"]
+    data_columns = ["datetime_utc", "datetime_local"]
     for col in data_columns:
         print(f"\n ---{col}---")
         print("Data types: ", df[col].dtype )
@@ -92,6 +93,8 @@ def process_openaq_data(raw_json_path, staging_path):
             errors="coerce",
             utc=True
         )
+    print("Time!!")
+    print(df[["datetime_utc", "datetime_local"]].isnull().sum())
 
 
 
@@ -105,6 +108,7 @@ def process_openaq_data(raw_json_path, staging_path):
     # Location IDs should identify one location
     df = df.drop_duplicates(subset=["location_id"], keep="first")
     print(df.dtypes)
+
 
     # 6. Extract sensors nested  from each original location record(Explode list)
     sensor_records = []
@@ -191,7 +195,7 @@ def process_openaq_data(raw_json_path, staging_path):
         "country_id", "country_code", "country_name",
         "owner_id", "owner_name", "provider_id", "provider_name",
         "latitude", "longitude", "is_mobile", "is_monitor",
-        "first_datetime_utc", "last_datetime_utc"
+        "datetime_utc", "datetime_local"
     ]
 
     location_columns = [
@@ -241,7 +245,7 @@ def process_openaq_data(raw_json_path, staging_path):
 
     # 10. Save the staging file
 
-
+"""
 
     for name, path in staging_path.items():
         S_path = Path(path)
@@ -276,11 +280,11 @@ def process_openaq_data(raw_json_path, staging_path):
     return  sensor_staging_df, license_staging_df, instrument_staging_df
 
 
-
+"""
 
 if __name__ == "__main__":
     from config import Raw_dir
-    raw_json_dir = Raw_dir/"Raw_OpenAQ_20261004_142907.json"
+    raw_json_dir = Raw_dir/"Raw_OpenAQ_20261115_115053.json"
     staging_dir = {"processed_sensor" : Raw_dir/ "stagingOpenAQ_platform" / "processed_sensorsOpenAQ_platform.parquet",
                    "processed_license" : Raw_dir/ "stagingOpenAQ_platform" / "processed_licenseOpenAQ_platform.parquet",
                    "processed_instrument":Raw_dir/ "stagingOpenAQ_platform" / "processed_instrumentOpenAQ_platform.parquet" }

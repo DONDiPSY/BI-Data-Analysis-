@@ -10,7 +10,16 @@ def build_sensor_data(staging_path, dim_sensor_path):
     dim_sensor.insert(0, "sensor_key", dim_sensor.index + 50120)
     dim_sensor["sensor_key"] = dim_sensor["sensor_key"].astype(int)
 
+    sensors_per_location =  dim_sensor.groupby("location_id")["sensor_id"].nunique()
+    multi_sensor_locations = sensors_per_location[sensors_per_location > 1]
+    print(multi_sensor_locations)
 
+    # 2. Sensors that belong to more than one location
+    locations_per_sensor =  dim_sensor.groupby("sensor_id")["location_id"].nunique()
+    multi_location_sensors = locations_per_sensor[locations_per_sensor > 1]
+    print(multi_location_sensors)
+
+"""
 
     # curious why dim_sensor should have columns  and why bridge_
     # create a directory
@@ -20,6 +29,7 @@ def build_sensor_data(staging_path, dim_sensor_path):
 
 
     return dim_sensor
+"""
 
 if __name__ == "__main__":
     from config import staging_dir, Dimension_dir

@@ -57,4 +57,4 @@ if __name__ == "__main__":
     staging_path = staging_dir/"processed_instrumentOpenAQ_platform.parquet"
     dim_path = Dimension_dir / "Dim_instrument.parquet"
 
-build_instrument_data(staging_path, dim_path)
+    build_instrument_data(staging_path, dim_path)

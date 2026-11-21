@@ -32,30 +32,39 @@ def build_fact_data(staging_path, fact_path, dim_tables):
     fact_table : pd.DataFrame
         The fact table with a surrogate 'weather_id' plus each dimension's key.
     """
-
+    staging_parameter = staging_path["processed_parameter"]
     staging_location = staging_path["processed_location"]
-    staging_license = staging_path["processed_license"]
     staging_sensor = staging_path["processed_sensor"]
+    # 1. Measurement is the driving dataset.
+    base = staging_parameter.copy()
 
-    loc_attrs = (
-        staging_location[["location_id", "country_id", "owner_id", "provider_id"]]
-        .drop_duplicates()
+    # 2. Enrich measurements with sensor attributes.
+    base = base.merge(
+        staging_sensor[
+            ["sensor_id", "location_id", "parameter_id"]
+        ],
+        on="sensor_id",
+        how="left",
+        validate="m:1"
     )
-    assert loc_attrs["location_id"].is_unique
-    #  Base table: one row per sensor.
-    base = staging_sensor[["sensor_id", "location_id", "parameter_id"]].merge(
-        loc_attrs, on ="location_id", how= "left", validate="m:1"
+
+    # 3. Enrich with location attributes.
+    base = base.merge(
+        staging_location[
+            ["location_id", "country_id", "owner_id", "provider_id"]
+        ],
+        on="location_id",
+        how="left",
+        validate="m:1"
     )
 
-    Base =base.merge(staging_license[["location_id", "license_id"]].drop_duplicates(),
-                     on="location_id", how= "left", validate="m:1")
-
-    fact_df = Base
-    for col in ["license_id", "country_id", "owner_id"]:
+    # 4. Check measurement row preservation.
+    assert len(base) == len(staging_parameter)
+    fact_df = base
+    for col in ["country_id", "owner_id"]:
         print(col, "-> NaN before lookup:", fact_df[col].isna().sum())
     for natural, surrogate , dim in[
         ("location_id", "location_key", "dim_location"),
-        ("license_id", "license_key", "dim_license"),
         ("country_id", "country_key", "dim_country"),
         ("owner_id", "owner_key", "dim_owner"),
         ("provider_id", "provider_key", "dim_provider"),
@@ -64,7 +73,7 @@ def build_fact_data(staging_path, fact_path, dim_tables):
     ]:
         fact_df =attach_key(fact_df, dim_tables[dim], natural, surrogate, dim)
     key_cols = ["location_key", "country_key", "owner_key", "provider_key",
-                 "parameter_key", "license_key", "sensor_key"]
+                 "parameter_key", "sensor_key","measurement_value"]
     fact_table = fact_df[key_cols].drop_duplicates().reset_index(drop=True)
     fact_table.insert(0, "weather_key", fact_table.index + 40220)
     fact_table["weather_key"] = fact_table["weather_key"].astype(int)
@@ -89,15 +98,13 @@ if __name__ == "__main__":
         "dim_owner": pd.read_parquet(Dimension_dir / "Dim_owner.parquet"),
         "dim_provider": pd.read_parquet(Dimension_dir / "Dim_provider.parquet"),
         "dim_parameter": pd.read_parquet(Dimension_dir / "Dim_parameter.parquet"),
-        "dim_license": pd.read_parquet(Dimension_dir / "Dim_license.parquet"),
         "dim_sensor": pd.read_parquet(Dimension_dir / "Dim_sensor.parquet")
     }
 
     staging_path = {
         "processed_location" : pd.read_parquet(staging_dir/"processed_instrumentOpenAQ_platform.parquet"),
-        "processed_license" : pd.read_parquet(staging_dir/"processed_licenseOpenAQ_platform.parquet"),
-        "processed_sensor" : pd.read_parquet(staging_dir /"processed_sensorsOpenAQ_platform.parquet")
-
+        "processed_sensor" : pd.read_parquet(staging_dir /"processed_sensorsOpenAQ_platform.parquet"),
+        "processed_parameter" : pd.read_parquet(staging_dir/"Processed_Parameter_measurement_values.parquet")
                     }
 
     fact_path =  Fact_dir/"Fact_Activity.parquet"
@@ -106,8 +113,12 @@ if __name__ == "__main__":
 
 
 """
-Removed Dimension Instrument from fact table due to one to many location on instrument 
+Removed Dimension Instrument from fact table due to many to many location on instrument 
 there is a duplicate of  same location_id  on particular instrument 
 created a bridge on that already 
 
+Same as Dimension License 
+
 """
+
+

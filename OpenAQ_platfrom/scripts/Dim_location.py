@@ -17,8 +17,8 @@ def build_location_data(staging_path, dim_path ):
     df = pd.read_parquet(staging_path)
 
     dim_location = df[["location_id", "location_name", "locality","timezone"
-                       ,"latitude","longitude", "is_mobile", "is_monitor", "first_datetime_utc",
-                       "last_datetime_utc"]].drop_duplicates(subset="location_id").reset_index(drop=True)
+                       ,"latitude","longitude", "is_mobile", "is_monitor"
+                       ]].drop_duplicates(subset="location_id").reset_index(drop=True)
     dim_location.insert(0,"location_key",dim_location.index + 1000)
     dim_location["location_key"] = dim_location["location_key"].astype(int)
 
